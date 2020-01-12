@@ -5,12 +5,7 @@ import qualified RIO.Map as M
 import qualified RIO.Set as S
 import Text.Pretty.Simple (pPrint)
 
--- TODO
--- type DistancesAndPrevs a = M.Map (Vertex a) (Int, Vertex a)
-
-type Distances a = M.Map (Vertex a) Int
-
-type Prevs a = M.Map (Vertex a) (Vertex a)
+type DistancesAndPrevs a = M.Map (Vertex a) (Int, Vertex a)
 
 newtype Vertex a = Vert a
   deriving (Ord, Eq, Show)
@@ -32,46 +27,46 @@ instance Graph MapGraph where
 
   neighbors (MapGraph m) v = M.findWithDefault S.empty v m
 
-dijkstra :: (Graph g, Ord a) => g a -> Vertex a -> (Distances a, Prevs a)
+dijkstra :: (Graph g, Ord a) => g a -> Vertex a -> DistancesAndPrevs a
 dijkstra graph start =
   let q = vertices graph
-      dist = M.singleton start 0
-   in aux q dist M.empty
+      dap = M.singleton start (0, start)
+   in aux q dap
   where
-    aux q dist prev =
+    aux q dap =
       if S.null q
-        then (dist, prev)
+        then dap
         else
-          let vminMaybe = foldr (minIn dist) Nothing q
+          let vminMaybe = foldr (minIn dap) Nothing q
            in case vminMaybe of
-                Nothing -> (dist, prev)
+                Nothing -> dap
                 Just vmin ->
                   let q' = S.delete vmin q
                       ns = neighbors graph vmin
-                      (dist', prev') = foldr (insertBetter vmin) (dist, prev) ns
-                   in aux q' dist' prev'
+                      dap' = foldr (insertBetter vmin) dap ns
+                   in aux q' dap'
 
-minIn :: Ord a => Distances a -> Vertex a -> Maybe (Vertex a) -> Maybe (Vertex a)
+minIn :: Ord a => DistancesAndPrevs a -> Vertex a -> Maybe (Vertex a) -> Maybe (Vertex a)
 minIn _ v Nothing = Just v
-minIn dist v (Just vmin) =
-  case (M.lookup v dist, M.lookup vmin dist) of
-    (Just d, Just dmin) -> Just $ if d < dmin then v else vmin
+minIn dap v (Just vmin) =
+  case (M.lookup v dap, M.lookup vmin dap) of
+    (Just (d, _), Just (dmin, _)) -> Just $ if d < dmin then v else vmin
     (Nothing, _) -> Just vmin
     (_, Nothing) -> Just v
     _ -> Nothing
 
-insertBetter :: Ord a => Vertex a -> Neighbor a -> (Distances a, Prevs a) -> (Distances a, Prevs a)
-insertBetter v (distance, vn) (dist, prev) =
-  case (M.lookup v dist, M.lookup vn dist) of
-    (Just d, Just dn) ->
+insertBetter :: Ord a => Vertex a -> Neighbor a -> DistancesAndPrevs a -> DistancesAndPrevs a
+insertBetter v (distance, vn) dap =
+  case (M.lookup v dap, M.lookup vn dap) of
+    (Just (d, _), Just (dn, _)) ->
       let alt = d + distance
        in if alt < dn
-            then (M.insert vn alt dist, M.insert vn v prev)
-            else (dist, prev)
-    (Just d, Nothing) ->
+            then M.insert vn (alt, v) dap
+            else dap
+    (Just (d, _), Nothing) ->
       let alt = d + distance
-       in (M.insert vn alt dist, M.insert vn v prev)
-    _ -> (dist, prev)
+       in M.insert vn (alt, v) dap
+    _ -> dap
 
 vA = Vert 'A'
 
