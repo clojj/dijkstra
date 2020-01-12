@@ -23,6 +23,7 @@ dependencies:
 - base >= 4.11 && < 10
 - rio >= 0.1.12.0
 - psqueues >=0.2.7.2
+- pretty-simple >= 2.2.0.1
 
 ghc-options:
 - -Wall
